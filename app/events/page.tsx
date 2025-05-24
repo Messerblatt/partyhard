@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Edit, Trash2, X } from "lucide-react"
 import type { EventWithUsers } from "@/types/event"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
 // Get color class for state
 const getStateColorClass = (state?: string) => {
@@ -36,6 +38,8 @@ const getStateColorClass = (state?: string) => {
 }
 
 export default function EventsPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const [events, setEvents] = useState<EventWithUsers[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedEvent, setSelectedEvent] = useState<EventWithUsers | null>(null)
@@ -45,9 +49,20 @@ export default function EventsPage() {
   const [error, setError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Redirect if not authenticated
   useEffect(() => {
-    fetchEvents()
-  }, [])
+    if (status === "loading") return // Still loading
+    if (!session) {
+      router.push("/auth/signin")
+      return
+    }
+  }, [session, status, router])
+
+  useEffect(() => {
+    if (session) {
+      fetchEvents()
+    }
+  }, [session])
 
   // Fetch event images when an event is selected
   useEffect(() => {
@@ -149,6 +164,15 @@ export default function EventsPage() {
     }
   }
 
+  // Show loading while checking authentication
+  if (status === "loading" || !session) {
+    return (
+      <main className="container mx-auto py-10 px-4">
+        <div className="text-center py-10">Loading...</div>
+      </main>
+    )
+  }
+
   if (loading) {
     return (
       <main className="container mx-auto py-10 px-4">
@@ -174,7 +198,6 @@ export default function EventsPage() {
       <Tabs defaultValue="events" className="w-full">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Management System</h1>
             <TabsList className="mt-4">
               <Link href="/">
                 <TabsTrigger value="users">Users</TabsTrigger>

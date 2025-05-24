@@ -2,14 +2,23 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArtistList } from "@/components/artist-list"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { redirect } from "next/navigation"
 
-export default function ArtistsPage() {
+export default async function ArtistsPage() {
+  const session = await getServerSession(authOptions)
+
+  if (!session) {
+    redirect("/auth/signin")
+  }
+
   return (
     <main className="container mx-auto py-10 px-4">
       <Tabs defaultValue="artists" className="w-full">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold">Management System</h1>
+
             <TabsList className="mt-4">
               <Link href="/">
                 <TabsTrigger value="users">Users</TabsTrigger>
