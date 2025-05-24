@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
@@ -11,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
+import { Plus, X, CornerDownLeft } from "lucide-react"
 import type { Artist } from "@/types/artist"
 
 // Form schema with validation
@@ -33,6 +36,15 @@ type ArtistFormProps = {
 
 export function ArtistForm({ artist, isEditing = false }: ArtistFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [memberInputs, setMemberInputs] = useState<string[]>([""])
+  const [membersList, setMembersList] = useState<string[]>(
+    artist?.members
+      ? artist.members
+          .split(",")
+          .map((m) => m.trim())
+          .filter(Boolean)
+      : [],
+  )
   const router = useRouter()
 
   // Initialize form with default values or existing artist data
@@ -50,6 +62,47 @@ export function ArtistForm({ artist, isEditing = false }: ArtistFormProps) {
       web: artist?.web || "",
     },
   })
+
+  const addMemberInput = () => {
+    setMemberInputs([...memberInputs, ""])
+  }
+
+  const removeMemberInput = (index: number) => {
+    setMemberInputs(memberInputs.filter((_, i) => i !== index))
+  }
+
+  const updateMemberInput = (index: number, value: string) => {
+    const newInputs = [...memberInputs]
+    newInputs[index] = value
+    setMemberInputs(newInputs)
+  }
+
+  const addMemberToList = (index: number) => {
+    const memberName = memberInputs[index].trim()
+    if (memberName && !membersList.includes(memberName)) {
+      const newMembersList = [...membersList, memberName]
+      setMembersList(newMembersList)
+      form.setValue("members", newMembersList.join(", "))
+
+      // Clear the input
+      const newInputs = [...memberInputs]
+      newInputs[index] = ""
+      setMemberInputs(newInputs)
+    }
+  }
+
+  const removeMemberFromList = (memberToRemove: string) => {
+    const newMembersList = membersList.filter((member) => member !== memberToRemove)
+    setMembersList(newMembersList)
+    form.setValue("members", newMembersList.join(", "))
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      addMemberToList(index)
+    }
+  }
 
   const onSubmit = async (data: z.infer<typeof artistFormSchema>) => {
     try {
@@ -147,19 +200,89 @@ export function ArtistForm({ artist, isEditing = false }: ArtistFormProps) {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="members"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Members</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Group members (for bands/collectives)" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+        {/* Dynamic Members Section */}
+        <div>
+          <FormLabel>Members</FormLabel>
+
+          {/* Display current members list */}
+          {membersList.length > 0 && (
+            <div className="mt-2 mb-4">
+              <div className="text-sm text-gray-600 mb-2">Current members:</div>
+              <div className="flex flex-wrap gap-2">
+                {membersList.map((member, index) => (
+                  <div
+                    key={index}
+                    className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm"
+                  >
+                    <span>{member}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeMemberFromList(member)}
+                      className="hover:bg-blue-200 rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-        />
+
+          {/* Dynamic input fields */}
+          <div className="space-y-2">
+            {memberInputs.map((input, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Input
+                  placeholder="Enter member name"
+                  value={input}
+                  onChange={(e) => updateMemberInput(index, e.target.value)}
+                  onKeyPress={(e) => handleKeyPress(e, index)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => addMemberToList(index)}
+                  disabled={!input.trim()}
+                  title="Add member (Enter)"
+                >
+                  <CornerDownLeft className="h-4 w-4" />
+                </Button>
+                {memberInputs.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => removeMemberInput(index)}
+                    title="Remove input field"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Add new input button */}
+          <Button type="button" variant="outline" size="sm" onClick={addMemberInput} className="mt-2 gap-2">
+            <Plus className="h-4 w-4" />
+            Add Member Input
+          </Button>
+
+          {/* Hidden field for form submission */}
+          <FormField
+            control={form.control}
+            name="members"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}

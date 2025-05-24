@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Edit, Trash2 } from "lucide-react"
+import { Edit, Trash2, X } from "lucide-react"
 import type { EventWithUsers } from "@/types/event"
 
 // Get color class for state
@@ -43,6 +43,7 @@ export default function EventsPage() {
   const [eventToDelete, setEventToDelete] = useState<EventWithUsers | null>(null)
   const [eventImages, setEventImages] = useState<{ id: number; filename: string; url: string }[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     fetchEvents()
@@ -68,7 +69,6 @@ export default function EventsPage() {
       }
 
       const data = await response.json()
-      console.log("Fetched events:", data) // Debug log
       setEvents(data)
     } catch (err) {
       console.error("Error fetching events:", err)
@@ -103,9 +103,10 @@ export default function EventsPage() {
   }
 
   const confirmDelete = async () => {
-    if (!eventToDelete) return
+    if (!eventToDelete || isDeleting) return
 
     try {
+      setIsDeleting(true)
       const response = await fetch(`/api/events/${eventToDelete.id}`, {
         method: "DELETE",
       })
@@ -114,15 +115,18 @@ export default function EventsPage() {
         throw new Error("Failed to delete event")
       }
 
-      // Remove event from the list
-      setEvents(events.filter((event) => event.id !== eventToDelete.id))
+      // Remove event from the list immediately
+      setEvents((prevEvents) => prevEvents.filter((event) => event.id !== eventToDelete.id))
       setError(null)
+
+      // Close dialogs
+      setDeleteDialogOpen(false)
+      setEventToDelete(null)
     } catch (err) {
       console.error("Error deleting event:", err)
       setError("Failed to delete event. Please try again.")
     } finally {
-      setDeleteDialogOpen(false)
-      setEventToDelete(null)
+      setIsDeleting(false)
     }
   }
 
@@ -193,20 +197,31 @@ export default function EventsPage() {
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between p-2 bg-red-500">
-              <span>{selectedEvent?.title}</span>
-              <div className="flex gap-2">
-                <Link href={`/events/edit/${selectedEvent?.id}`}>
-                  <Button variant="outline" size="icon">
-                    <Edit className="h-4 w-lg" />
+            <div className="flex items-center justify-between">
+              <div className="flex-1" />
+              <DialogTitle className="text-center flex-1">{selectedEvent?.title}</DialogTitle>
+              <div className="flex-1 flex justify-end">
+                <div className="flex gap-1">
+                  <Link href={`/events/edit/${selectedEvent?.id}`}>
+                    <Button variant="outline" size="icon" title="Edit Event">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => selectedEvent && handleDeleteClick(selectedEvent)}
+                    title="Delete Event"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
-                </Link>
-                <Button variant="outline" size="icon" onClick={() => selectedEvent && handleDeleteClick(selectedEvent)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  <Button variant="outline" size="icon" onClick={() => setSelectedEvent(null)} title="Close">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </DialogTitle>
-            <DialogDescription className="flex items-center gap-2">
+            </div>
+            <DialogDescription className="flex items-center justify-center gap-2">
               <span>{selectedEvent?.category}</span>
               {selectedEvent?.state && (
                 <span className={`px-2 py-1 text-xs rounded-full ${getStateColorClass(selectedEvent.state)}`}>
@@ -302,9 +317,9 @@ export default function EventsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
-              Delete
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700" disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

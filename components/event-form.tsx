@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
-import { X, Upload, XCircle } from "lucide-react"
+import { X, Upload, XCircle, AlertTriangle } from "lucide-react"
 import type { EventWithUsers } from "@/types/event"
 import type { User } from "@/types/user"
 import type { Artist } from "@/types/artist"
@@ -54,6 +54,7 @@ export function EventForm({ event, isEditing = false }: EventFormProps) {
   const [eventImages, setEventImages] = useState<{ id: number; filename: string; url: string }[]>([])
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
+  const [timeWarnings, setTimeWarnings] = useState<string[]>([])
   const router = useRouter()
 
   // Helper function to format datetime for input fields (properly handles timezone)
@@ -75,6 +76,40 @@ export function EventForm({ event, isEditing = false }: EventFormProps) {
       console.error("Error formatting date:", e)
       return ""
     }
+  }
+
+  // Validate time logic and show warnings
+  const validateTimeLogic = (start: string, end: string, doorsOpen: string) => {
+    const warnings: string[] = []
+
+    if (start && end) {
+      const startDate = new Date(start)
+      const endDate = new Date(end)
+
+      if (endDate <= startDate) {
+        warnings.push("End time should be after start time")
+      }
+    }
+
+    if (start && doorsOpen) {
+      const startDate = new Date(start)
+      const doorsDate = new Date(doorsOpen)
+
+      if (doorsDate > startDate) {
+        warnings.push("Doors open should not be after start time")
+      }
+    }
+
+    if (end && doorsOpen) {
+      const endDate = new Date(end)
+      const doorsDate = new Date(doorsOpen)
+
+      if (doorsDate > endDate) {
+        warnings.push("Doors open should not be after end time")
+      }
+    }
+
+    setTimeWarnings(warnings)
   }
 
   // Fetch users and artists for dropdowns
@@ -121,7 +156,7 @@ export function EventForm({ event, isEditing = false }: EventFormProps) {
   const form = useForm<z.infer<typeof eventFormSchema>>({
     resolver: zodResolver(eventFormSchema),
     defaultValues: {
-      category: event?.category || "Rave",
+      category: event?.category || "Concert",
       title: event?.title || "",
       start_: formatDateTimeForInput(event?.start_),
       end_: formatDateTimeForInput(event?.end_),
@@ -142,6 +177,17 @@ export function EventForm({ event, isEditing = false }: EventFormProps) {
     },
   })
 
+  // Watch time fields for validation
+  const watchedStart = form.watch("start_")
+  const watchedEnd = form.watch("end_")
+  const watchedDoorsOpen = form.watch("doors_open")
+
+  useEffect(() => {
+    if (watchedStart || watchedEnd || watchedDoorsOpen) {
+      validateTimeLogic(watchedStart, watchedEnd, watchedDoorsOpen)
+    }
+  }, [watchedStart, watchedEnd, watchedDoorsOpen])
+
   // Update form when selectedArtists changes
   useEffect(() => {
     form.setValue("selected_artists", selectedArtists)
@@ -159,12 +205,35 @@ export function EventForm({ event, isEditing = false }: EventFormProps) {
   const handleArtistToggle = (artistId: string) => {
     setSelectedArtists((prev) => {
       const newSelection = prev.includes(artistId) ? prev.filter((id) => id !== artistId) : [...prev, artistId]
+
+      // Update the form value immediately
+      form.setValue("selected_artists", newSelection)
       return newSelection
     })
   }
 
   const clearField = (fieldName: string) => {
     form.setValue(fieldName, "")
+  }
+
+  const removeEventImage = async (imageId: number) => {
+    if (!event?.id) return
+
+    try {
+      const response = await fetch(`/api/events/${event.id}/images?imageId=${imageId}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to delete image")
+      }
+
+      // Remove image from the list
+      setEventImages(eventImages.filter((img) => img.id !== imageId))
+    } catch (error) {
+      console.error("Error deleting image:", error)
+      setSubmitError("Failed to delete image. Please try again.")
+    }
   }
 
   const onSubmit = async (data: z.infer<typeof eventFormSchema>) => {
@@ -175,19 +244,15 @@ export function EventForm({ event, isEditing = false }: EventFormProps) {
 
       // Helper function to convert datetime-local input to UTC timestamp
       const convertToUTC = (datetimeLocal: string): string => {
-        
-        /*
         // Create a date object treating the input as local time
         const localDate = new Date(datetimeLocal)
         // Return as ISO string (which is in UTC)
         return localDate.toISOString()
-        */
-       return datetimeLocal;
       }
 
       // Convert datetime-local inputs to UTC timestamps for database storage
       const eventData = {
-        category: data.category || "Rave",
+        category: data.category || "Concert",
         title: data.title,
         start_: data.start_ ? convertToUTC(data.start_) : null,
         end_: data.end_ ? convertToUTC(data.end_) : null,
@@ -227,16 +292,16 @@ export function EventForm({ event, isEditing = false }: EventFormProps) {
       const savedEvent = await response.json()
       const eventId = savedEvent.id
 
-      // Handle artist bookings
-      if (selectedArtists.length > 0) {
-        await fetch(`/api/events/${eventId}/artists`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ artist_ids: selectedArtists.map((id) => Number.parseInt(id)) }),
-        })
-      }
+      // Handle artist bookings - always send the request, even if no artists are selected
+      await fetch(`/api/events/${eventId}/artists`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          artist_ids: selectedArtists.length > 0 ? selectedArtists.map((id) => Number.parseInt(id)) : [],
+        }),
+      })
 
       // Handle image uploads
       if (uploadedImages.length > 0) {
@@ -284,6 +349,23 @@ export function EventForm({ event, isEditing = false }: EventFormProps) {
           <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
             <strong className="font-bold">Success!</strong>
             <span className="block sm:inline"> {submitSuccess}</span>
+          </div>
+        )}
+
+        {timeWarnings.length > 0 && (
+          <div
+            className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative"
+            role="alert"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <strong className="font-bold">Time Validation Warnings:</strong>
+            </div>
+            <ul className="list-disc list-inside mt-2">
+              {timeWarnings.map((warning, index) => (
+                <li key={index}>{warning}</li>
+              ))}
+            </ul>
           </div>
         )}
 
@@ -679,6 +761,14 @@ export function EventForm({ event, isEditing = false }: EventFormProps) {
                     alt={image.filename}
                     className="w-full h-32 object-cover rounded-md"
                   />
+                  <button
+                    type="button"
+                    onClick={() => removeEventImage(image.id)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    title="Remove image"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                 </div>
               ))}
             </div>

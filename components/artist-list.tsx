@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Edit, Trash2, Calendar } from "lucide-react"
+import { Edit, Trash2, Calendar, RefreshCw } from "lucide-react"
 import type { Artist } from "@/types/artist"
 import { toast } from "@/components/ui/use-toast"
 
@@ -26,6 +26,7 @@ interface ArtistWithEventCount extends Artist {
 export function ArtistList() {
   const [artists, setArtists] = useState<ArtistWithEventCount[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [artistToDelete, setArtistToDelete] = useState<ArtistWithEventCount | null>(null)
@@ -35,9 +36,13 @@ export function ArtistList() {
     fetchArtists()
   }, [])
 
-  const fetchArtists = async () => {
+  const fetchArtists = async (showRefreshing = false) => {
     try {
-      setLoading(true)
+      if (showRefreshing) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
       const response = await fetch("/api/artists")
 
       if (!response.ok) {
@@ -52,7 +57,12 @@ export function ArtistList() {
       console.error("Error fetching artists:", err)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
+  }
+
+  const refreshArtists = () => {
+    fetchArtists(true)
   }
 
   const handleDeleteClick = (artist: ArtistWithEventCount) => {
@@ -99,7 +109,7 @@ export function ArtistList() {
     return (
       <div className="text-center py-10">
         <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={fetchArtists}>Try Again</Button>
+        <Button onClick={() => fetchArtists()}>Try Again</Button>
       </div>
     )
   }
@@ -117,6 +127,14 @@ export function ArtistList() {
 
   return (
     <>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">Artists ({artists.length})</h2>
+        <Button variant="outline" size="sm" onClick={refreshArtists} disabled={refreshing} className="gap-2">
+          <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -125,7 +143,6 @@ export function ArtistList() {
               <TableHead>Type</TableHead>
               <TableHead>Label</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Events</TableHead>
               <TableHead>Agency</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -137,11 +154,6 @@ export function ArtistList() {
                 <TableCell>{artist.type}</TableCell>
                 <TableCell>{artist.label || "-"}</TableCell>
                 <TableCell>{artist.email || "-"}</TableCell>
-                <TableCell>
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                    {artist.event_count}
-                  </span>
-                </TableCell>
                 <TableCell>{artist.agency || "-"}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
