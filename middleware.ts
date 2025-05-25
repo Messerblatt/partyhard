@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { withAuth } from "next-auth/middleware"
+import { updateSession } from '@/utils/supabase/middleware'
 
 export default withAuth(
   function middleware(request: NextRequest) {
@@ -36,5 +37,10 @@ export const config = {
      * - favicon.ico (favicon file)
      */
     "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'
   ],
+}
+
+export async function middleware(request: NextRequest) {
+  return await updateSession(request)
 }

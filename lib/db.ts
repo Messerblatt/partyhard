@@ -2,11 +2,11 @@ import { Pool } from "pg"
 
 // Create a new pool instance with better error handling
 const pool = new Pool({
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  host: process.env.POSTGRES_HOST,
-  port: Number.parseInt(process.env.POSTGRES_PORT || "5432"),
-  database: process.env.POSTGRES_DATABASE,
+  user: process.env.STORAGE_POSTGRES_USER,
+  password: process.env.STORAGE_POSTGRES_PASSWORD,
+  host: process.env.STORAGE_POSTGRES_HOST,
+  port: Number.parseInt(process.env.port || "5432"),
+  database: process.env.database,
   // Add connection timeout and retry logic
   connectionTimeoutMillis: 5000,
   idleTimeoutMillis: 30000,
