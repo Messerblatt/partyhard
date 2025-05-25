@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle, ArrowLeft } from "lucide-react"
+import { createClient } from "@/lib/supabase"
 
 const registerSchema = z
   .object({
@@ -31,6 +32,7 @@ export function RegisterForm() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const router = useRouter()
+  const supabase = createClient()
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -49,39 +51,33 @@ export function RegisterForm() {
       setIsLoading(true)
       setError(null)
 
-      // console.log("Registration form submitted")
-      // console.log("User data:", { ...data, password: "[HIDDEN]", confirmPassword: "[HIDDEN]" })
-
-      // Remove confirmPassword before sending to API
-      const { confirmPassword, ...userData } = data
-
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            name: data.name,
+            phone: data.phone,
+            role: data.role,
+          },
         },
-        body: JSON.stringify(userData),
       })
 
-      // console.log("Registration response status:", response.status)
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        // console.log("Registration error:", errorData)
-        throw new Error(errorData.error || "Failed to create account")
+      if (error) {
+        setError(error.message)
+        return
       }
-
-      const responseData = await response.json()
-      // console.log("Registration successful:", responseData)
 
       setSuccess(true)
 
       // Redirect to login page after a short delay
       setTimeout(() => {
-        router.push("/auth/signin?message=Account created successfully. Please sign in.")
+        router.push(
+          "/auth/signin?message=Account created successfully. Please check your email to verify your account.",
+        )
       }, 2000)
     } catch (error: any) {
-      // console.error("Registration error:", error)
+      console.error("Registration error:", error)
       setError(error.message || "An error occurred during registration")
     } finally {
       setIsLoading(false)
@@ -100,7 +96,7 @@ export function RegisterForm() {
             <div className="text-center">
               <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Created!</h2>
-              <p className="text-gray-600 mb-4">Your account has been created successfully.</p>
+              <p className="text-gray-600 mb-4">Please check your email to verify your account.</p>
               <p className="text-sm text-gray-500">Redirecting to sign in page...</p>
             </div>
           </CardContent>
@@ -119,7 +115,7 @@ export function RegisterForm() {
             </Button>
             <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
           </div>
-          <CardDescription>Enter infos below to create a new account</CardDescription>
+          <CardDescription>Enter your information to create a new account</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (

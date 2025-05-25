@@ -18,7 +18,7 @@ export default async function ArtistsPage() {
       <Tabs defaultValue="artists" className="w-full">
         <div className="flex justify-between items-center mb-8">
           <div>
-
+            <h1 className="text-3xl font-bold">Management System</h1>
             <TabsList className="mt-4">
               <Link href="/">
                 <TabsTrigger value="users">Users</TabsTrigger>

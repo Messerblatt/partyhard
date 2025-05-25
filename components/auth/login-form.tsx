@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { signIn, getSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
@@ -11,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle } from "lucide-react"
+import { createClient } from "@/lib/supabase"
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -25,6 +25,7 @@ export function LoginForm({ message }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const supabase = createClient()
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -39,42 +40,20 @@ export function LoginForm({ message }: LoginFormProps) {
       setIsLoading(true)
       setError(null)
 
-      // console.log("Login form submitted")
-      // console.log("Email:", data.email)
-      // console.log("Password length:", data.password.length)
-
-      const result = await signIn("credentials", {
+      const { error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
-        redirect: false,
       })
 
-      // console.log("SignIn result:", result)
-
-      if (result?.error) {
-        // console.log("SignIn error:", result.error)
-        setError("Invalid email or password")
+      if (error) {
+        setError(error.message)
         return
       }
 
-      if (result?.ok) {
-        // console.log("SignIn successful, getting session...")
-
-        // Get the updated session
-        const session = await getSession()
-        // console.log("Session:", session)
-
-        if (session) {
-          // console.log("Session found, redirecting...")
-          router.push("/")
-          router.refresh()
-        } else {
-          // console.log("No session found after successful signin")
-          setError("Authentication succeeded but session creation failed")
-        }
-      }
+      router.push("/")
+      router.refresh()
     } catch (error) {
-      // console.error("Login error:", error)
+      console.error("Login error:", error)
       setError("An error occurred during login")
     } finally {
       setIsLoading(false)
@@ -82,7 +61,6 @@ export function LoginForm({ message }: LoginFormProps) {
   }
 
   const handleRegisterClick = () => {
-    // console.log("Navigating to register page")
     router.push("/auth/register")
   }
 
@@ -92,7 +70,7 @@ export function LoginForm({ message }: LoginFormProps) {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Sign in</CardTitle>
           <CardDescription className="text-center">
-            Enter email and password 
+            Enter your email and password to access the management system
           </CardDescription>
         </CardHeader>
         <CardContent>

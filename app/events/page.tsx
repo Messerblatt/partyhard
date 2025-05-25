@@ -198,6 +198,7 @@ export default function EventsPage() {
       <Tabs defaultValue="events" className="w-full">
         <div className="flex justify-between items-center mb-8">
           <div>
+            <h1 className="text-3xl font-bold">Management System</h1>
             <TabsList className="mt-4">
               <Link href="/">
                 <TabsTrigger value="users">Users</TabsTrigger>
