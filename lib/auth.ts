@@ -1,6 +1,9 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { NextResponse, type NextRequest } from "next/server"
+import NextAuth from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
+import { supabase } from "@/lib/supabase";
 
 export async function createClient() {
   const cookieStore = await cookies()
@@ -19,6 +22,7 @@ export async function createClient() {
           // user sessions.
         }
       },
+
       remove(name: string, options: CookieOptions) {
         try {
           cookieStore.set({ name, value: "", ...options })
@@ -89,3 +93,55 @@ export async function updateSession(request: NextRequest) {
 
   return response
 }
+
+
+export const authOptions = {
+  providers: [
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const { email, password } = credentials ?? {}
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (error || !data.user) {
+          console.error("Login failed:", error)
+          return null
+        }
+
+        return {
+          id: data.user.id,
+          email: data.user.email,
+        }
+      },
+    }),
+  ],
+  session: {
+    strategy: "jwt",
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id
+      }
+      return session
+    },
+  },
+  pages: {
+    signIn: "/auth/signin",
+  },
+}
+

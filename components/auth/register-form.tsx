@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle, ArrowLeft } from "lucide-react"
-import { createClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 
 const registerSchema = z
   .object({
@@ -32,7 +32,7 @@ export function RegisterForm() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
