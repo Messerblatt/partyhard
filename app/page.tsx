@@ -1,17 +1,15 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/auth"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { UserList } from "@/components/user-list"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { redirect } from "next/navigation"
 
 export default async function Home() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const session = await getServerSession(authOptions)
 
-  if (!user) {
+  if (!session) {
     redirect("/auth/signin")
   }
 
