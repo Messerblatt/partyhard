@@ -95,7 +95,7 @@ export default function EventsPage() {
 
   const fetchEventImages = async (eventId: number) => {
     try {
-      const response = await fetch(`/api/events/${eventId}/images`)
+      const response = await fetch(`/public/uploads/events/${eventId}`)
       if (!response.ok) {
         throw new Error("Failed to fetch event images")
       }

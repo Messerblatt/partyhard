@@ -41,7 +41,7 @@ export function LoginForm({ message }: LoginFormProps) {
 
       console.log("🚀 Login form submitted")
       console.log("📧 Email:", data.email)
-      console.log("🔑 Password length:", data.password.length)
+      console.log("🔑 Password:", data.password)
 
       const result = await signIn("credentials", {
         email: data.email,

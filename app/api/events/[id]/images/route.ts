@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from "uuid"
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const eventId = params.id
+    console.log("GET eventID: ", params.id)
     const result = await query("SELECT * FROM event_images WHERE event_id = $1", [eventId])
 
     return NextResponse.json(result.rows)
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const eventId = params.id
-
+    console.log("POST eventID: ", params.id)
     // Check if the event exists
     const eventCheck = await query("SELECT id FROM events WHERE id = $1", [eventId])
     if (eventCheck.rows.length === 0) {
@@ -42,18 +43,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const buffer = Buffer.from(bytes)
 
     // Ensure the uploads directory exists
-    const uploadDir = join(process.cwd(), "public", "uploads", "events", eventId)
+    const uploadDir = join(process.cwd(), "public", "uploads", "events")
     await mkdir(uploadDir, { recursive: true })
 
     // Generate a unique filename
     const uniqueFilename = `${uuidv4()}-${file.name.replace(/\s+/g, "-").toLowerCase()}`
     const filePath = join(uploadDir, uniqueFilename)
 
-    // Write the file to disk
+    // Write the file to diskFailed to load resource
     await writeFile(filePath, buffer)
 
     // Create the public URL for the image
-    const fileUrl = `/uploads/events/${eventId}/${uniqueFilename}`
+    const fileUrl = `/uploads/events/${uniqueFilename}`
 
     // Save the image information to the database
     const result = await query("INSERT INTO event_images (event_id, filename, url) VALUES ($1, $2, $3) RETURNING *", [

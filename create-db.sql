@@ -71,7 +71,7 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL
 );
 
-INSERT INTO users (role, name, email, password) VALUES ('Admin', 'Markus', 'markusmeyer2000@protonmail.com', '1234');
+INSERT INTO users (role, name, email, password) VALUES ('Admin', 'Markus', 'markusmeyer2000@protonmail.com', '$2b$10$aNhe1P11vTB6WGY/mnrPZujw62sJt8qZDrr7S4HZBWZuhnlZ6kNVe');
 
 
 -- Events Table
@@ -102,15 +102,12 @@ CREATE TABLE events (
     api_notes TEXT
 );
 
-
-
 -- Join Table: event_bookings
 CREATE TABLE event_bookings (
     event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     artist_id INTEGER NOT NULL REFERENCES artists(id) ON DELETE CASCADE,
     PRIMARY KEY (event_id, artist_id)
 );
-
 
 CREATE TABLE event_images (
   id SERIAL PRIMARY KEY,
